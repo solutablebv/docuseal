@@ -9,6 +9,10 @@ module Api
       authorize!(:create, Submission)
     end
 
+    before_action only: :pdf do
+      authorize!(:create, Submission)
+    end
+
     def index
       submissions = Submissions.search(current_user, @submissions, params[:q])
       submissions = filter_submissions(submissions, params)
@@ -85,6 +89,44 @@ module Api
       Rollbar.warning(e) if defined?(Rollbar)
 
       render json: { error: e.message }, status: :unprocessable_content
+    end
+
+    def pdf
+      Params::SubmissionPdfValidator.call(params)
+
+      # Create temporary template
+      template = create_temp_template_from_pdf
+
+      # Create submission using existing logic
+      params[:template_id] = template.id
+      params[:send_email] = true unless params.key?(:send_email)
+      params[:send_sms] = false unless params.key?(:send_sms)
+
+      submissions = create_submissions(template, params)
+
+      WebhookUrls.enqueue_events(submissions, 'submission.created')
+
+      Submissions.send_signature_requests(submissions)
+
+      submissions.each do |submission|
+        submission.submitters.each do |submitter|
+          next unless submitter.completed_at?
+
+          ProcessSubmitterCompletionJob.perform_async('submitter_id' => submitter.id, 'send_invitation_email' => false)
+        end
+      end
+
+      SearchEntries.enqueue_reindex(submissions)
+
+      render json: build_create_json(submissions)
+    rescue Params::BaseValidator::InvalidParameterError,
+           Submitters::NormalizeValues::BaseError,
+           Submissions::CreateFromSubmitters::BaseError,
+           DownloadUtils::UnableToDownload,
+           Submissions::ValidateTextTagFields::InvalidFieldError,
+           StandardError => e
+      Rollbar.error(e) if defined?(Rollbar)
+      render json: { error: "PDF submission error: #{e.message}" }, status: :unprocessable_content
     end
 
     def destroy
@@ -176,6 +218,129 @@ module Api
         end
 
         submissions
+      end
+    end
+
+    def create_temp_template_from_pdf
+      template = Template.new(
+        account: current_account,
+        author: current_user,
+        folder: current_account.default_template_folder,
+        name: params[:name] || params['name'] || 'PDF Submission',
+        source: :api
+      )
+
+      Templates.maybe_assign_access(template)
+      template.save!
+
+      all_fields = []
+      all_submitters = build_submitters_from_params
+
+      # Process each document
+      documents_params = params[:documents] || params['documents']
+      documents_params.each_with_index do |doc_params, doc_index|
+        file_param = doc_params[:file] || doc_params['file']
+        pdf_data = get_pdf_data(file_param)
+        filename = (doc_params[:name] || doc_params['name']) || "document-#{doc_index + 1}.pdf"
+
+        # Extract text tags (returns 0-based page indices)
+        extracted_fields = Submissions::ExtractTextTags.call(pdf_data)
+
+        # Optionally remove text tags (must be done before converting page numbers)
+        remove_tags = params[:remove_text_tags] || params['remove_text_tags']
+        # Default to true if not specified (remove tags by default)
+        if remove_tags != false && remove_tags != 'false' && remove_tags != 0 && remove_tags != '0'
+          pdf_data = Submissions::RemoveTextTags.call(pdf_data, extracted_fields)
+        end
+
+        # Create uploaded file
+        tempfile = Tempfile.new(filename)
+        tempfile.binmode
+        tempfile.write(pdf_data)
+        tempfile.rewind
+
+        file = ActionDispatch::Http::UploadedFile.new(
+          tempfile:,
+          filename:,
+          type: 'application/pdf'
+        )
+
+        # Create document attachment
+        documents = Templates::CreateAttachments.call(template, { files: [file] }, extract_fields: false)
+        document = documents.first
+
+        raise StandardError, 'Failed to create document attachment' if document.nil?
+
+        # Update field areas with attachment UUID
+        # Note: page numbers are kept 0-based to match view indexing and PDF array access
+        extracted_fields.each do |field|
+          next if field['areas'].blank?
+
+          field['areas'].each do |area|
+            area['attachment_uuid'] = document.uuid
+            # Page is already 0-based from extract_text_tags, keep it as is
+          end
+        end
+
+        all_fields.concat(extracted_fields) if extracted_fields.present?
+      end
+
+      # Map roles to submitter UUIDs
+      all_fields.each do |field|
+        role = field.delete('_role')
+        if role.present?
+          submitter = all_submitters.find { |s| (s['name'] || s['role']).to_s.casecmp(role.to_s).zero? }
+          field['submitter_uuid'] = submitter['uuid'] if submitter
+        else
+          # Default to first submitter if no role specified
+          field['submitter_uuid'] = all_submitters.first['uuid'] if all_submitters.any?
+        end
+      end
+
+      # Validate fields if any were extracted
+      Submissions::ValidateTextTagFields.call(all_fields, all_submitters) if all_fields.present?
+
+      # Set template fields and submitters
+      template.fields = all_fields
+      template.submitters = all_submitters
+
+      # If no fields were extracted, we still need at least empty fields array
+      template.fields = [] if template.fields.blank?
+
+      # Build schema
+      template.schema = template.documents.map do |doc|
+        { attachment_uuid: doc.uuid, name: doc.filename.base }
+      end
+
+      template.save!
+
+      template
+    end
+
+    def get_pdf_data(file_param)
+      file_value = file_param.to_s
+
+      if file_value.match?(/\Ahttps?:\/\//i)
+        # Download from URL
+        DownloadUtils.call(file_value).body
+      elsif file_value.match?(/\Adata:/)
+        # Data URI
+        Base64.decode64(file_value.split(',', 2).last)
+      else
+        # Base64 string
+        Base64.decode64(file_value)
+      end
+    end
+
+    def build_submitters_from_params
+      submitters_params = params[:submitters] || params['submitters'] || []
+      submitters_params.map do |submitter_params|
+        {
+          'uuid' => SecureRandom.uuid,
+          'name' => submitter_params[:name] || submitter_params['name'],
+          'email' => submitter_params[:email] || submitter_params['email'],
+          'role' => submitter_params[:role] || submitter_params['role'] || submitter_params[:name] || submitter_params['name']
+        }
       end
     end
 

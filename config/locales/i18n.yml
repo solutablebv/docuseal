@@ -215,6 +215,7 @@ en: &en
   remove_existing_api_token_and_generated_a_new_one_are_you_sure_: Remove existing API token and generated a new one. Are you sure?
   request_signature_multiple_submitters_with_default_values: Request signature, multiple submitters with default values
   request_signature_single_submitter: Request signature, single submitter
+  request_signature_from_pdf: Create submission from PDF with embedded text tags
   template_details: Template details
   open_full_api_reference: Open Full API Reference
   api_token_has_been_updated: API token has been updated.

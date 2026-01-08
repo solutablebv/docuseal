@@ -9,8 +9,6 @@ class ErrorsController < ActionController::Base
     '/api/submissions/html',
     '/templates/html',
     '/api/templates/html',
-    '/submissions/pdf',
-    '/api/submissions/pdf',
     '/templates/pdf',
     '/api/templates/pdf',
     '/templates/doc',

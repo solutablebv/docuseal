@@ -34,6 +34,7 @@ Rails.application.routes.draw do
       collection do
         resources :init, only: %i[create], controller: 'submissions'
         resources :emails, only: %i[create], controller: 'submissions', as: :submissions_emails
+        post :pdf, controller: 'submissions'
       end
     end
     resources :templates, only: %i[update show index destroy] do

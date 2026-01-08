@@ -1,0 +1,8 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: docuseal/docuseal:local
+    # Remove the image line from base compose, we're building instead
+
