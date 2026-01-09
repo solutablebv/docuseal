@@ -40,9 +40,9 @@ module Submitters
       additional_attrs['preferences'] = submitter.preferences.except('default_values')
       additional_attrs['submission_events'] = serialize_events(submitter.submission_events) if with_events
 
-      additional_attrs['role'] =
-        (submitter.submission.template_submitters ||
-         submitter.submission.template.submitters).find { |e| e['uuid'] == submitter.uuid }['name']
+      template_submitter = (submitter.submission.template_submitters ||
+                            submitter.submission.template.submitters).find { |e| e['uuid'] == submitter.uuid }
+      additional_attrs['role'] = template_submitter['role'] || template_submitter['name'] if template_submitter
 
       if with_urls
         additional_attrs['embed_src'] =

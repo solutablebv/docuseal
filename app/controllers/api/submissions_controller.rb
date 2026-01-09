@@ -290,7 +290,8 @@ module Api
       all_fields.each do |field|
         role = field.delete('_role')
         if role.present?
-          submitter = all_submitters.find { |s| (s['name'] || s['role']).to_s.casecmp(role.to_s).zero? }
+          # Prioritize role over name for matching (role is more specific)
+          submitter = all_submitters.find { |s| (s['role'] || s['name']).to_s.casecmp(role.to_s).zero? }
           field['submitter_uuid'] = submitter['uuid'] if submitter
         else
           # If no role specified, duplicate field for all submitters so it's visible to everyone
@@ -348,11 +349,17 @@ module Api
     def build_submitters_from_params
       submitters_params = params[:submitters] || params['submitters'] || []
       submitters_params.map do |submitter_params|
+        # For JSON params, keys are strings, so check string keys first
+        # Use .presence to handle empty strings
+        role = (submitter_params['role'] || submitter_params[:role]).presence
+        name = (submitter_params['name'] || submitter_params[:name]).presence
+        email = (submitter_params['email'] || submitter_params[:email]).presence
+        
         {
           'uuid' => SecureRandom.uuid,
-          'name' => submitter_params[:name] || submitter_params['name'],
-          'email' => submitter_params[:email] || submitter_params['email'],
-          'role' => submitter_params[:role] || submitter_params['role'] || submitter_params[:name] || submitter_params['name']
+          'name' => name,
+          'email' => email,
+          'role' => role
         }
       end
     end
