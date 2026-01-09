@@ -286,16 +286,29 @@ module Api
       end
 
       # Map roles to submitter UUIDs
+      fields_to_add = []
       all_fields.each do |field|
         role = field.delete('_role')
         if role.present?
           submitter = all_submitters.find { |s| (s['name'] || s['role']).to_s.casecmp(role.to_s).zero? }
           field['submitter_uuid'] = submitter['uuid'] if submitter
         else
-          # Default to first submitter if no role specified
-          field['submitter_uuid'] = all_submitters.first['uuid'] if all_submitters.any?
+          # If no role specified, duplicate field for all submitters so it's visible to everyone
+          if all_submitters.any?
+            all_submitters.each do |submitter|
+              field_copy = field.deep_dup
+              field_copy['uuid'] = SecureRandom.uuid
+              field_copy['submitter_uuid'] = submitter['uuid']
+              fields_to_add << field_copy
+            end
+            # Remove original field since we've duplicated it
+            field['_remove'] = true
+          end
         end
       end
+      # Remove fields marked for removal and add duplicated fields
+      all_fields.reject! { |f| f['_remove'] }
+      all_fields.concat(fields_to_add)
 
       # Validate fields if any were extracted
       Submissions::ValidateTextTagFields.call(all_fields, all_submitters) if all_fields.present?

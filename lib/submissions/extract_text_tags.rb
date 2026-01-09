@@ -19,14 +19,18 @@ module Submissions
         text_nodes = page.text_nodes
         next if text_nodes.blank?
 
-        # Build full text from nodes to find tags
-        full_text = text_nodes.map(&:content).join
-        tag_matches = full_text.scan(TAG_PATTERN)
+        # Build full text from nodes for position calculations
+        full_text_nodes = text_nodes.map(&:content).join
+        
+        # Use Pdfium's text method for extracting tag content (preserves spaces in field names)
+        full_text_with_spaces = page.text
+        tag_matches = full_text_with_spaces.scan(TAG_PATTERN)
 
         next if tag_matches.blank?
 
-        # Find tag positions in text nodes
-        tag_fields = find_tags_in_text(text_nodes, full_text, page_index, attachment_uuid)
+        # Find tag positions in text nodes (using nodes text for accurate positions)
+        # But extract tag content from spaced text for correct field names
+        tag_fields = find_tags_in_text(text_nodes, full_text_nodes, full_text_with_spaces, page_index, attachment_uuid)
 
         fields.concat(tag_fields)
       end
@@ -36,16 +40,26 @@ module Submissions
       doc&.close
     end
 
-    def find_tags_in_text(text_nodes, full_text, page_index, attachment_uuid)
+    def find_tags_in_text(text_nodes, full_text_nodes, full_text_with_spaces, page_index, attachment_uuid)
       fields = []
 
-      # Find all tag matches in full text with positions
-      full_text.to_enum(:scan, TAG_PATTERN).map do
-        [Regexp.last_match, Regexp.last_match.begin(0), Regexp.last_match.end(0)]
-      end.each do |match, tag_start_pos, tag_end_pos|
-        tag_content = match[1] # First capture group
+      # Find tag matches in the spaced text to get correct field names
+      # But use positions from nodes text for accurate bounding box calculations
+      tag_contents = []
+      full_text_with_spaces.to_enum(:scan, TAG_PATTERN).each do
+        match = Regexp.last_match
+        tag_contents << match[1] # First capture group - the tag content with proper spacing
+      end
 
-        # Find corresponding text nodes for this tag
+      # Now find the same tags in the nodes text to get accurate positions
+      full_text_nodes.to_enum(:scan, TAG_PATTERN).map do
+        [Regexp.last_match, Regexp.last_match.begin(0), Regexp.last_match.end(0)]
+      end.each_with_index do |(match, tag_start_pos, tag_end_pos), index|
+        # Use the tag content from spaced text (for correct field names)
+        # but positions from nodes text (for accurate bounding boxes)
+        tag_content = tag_contents[index] || match[1]
+
+        # Find corresponding text nodes for this tag using nodes text positions
         tag_nodes = find_nodes_for_range(text_nodes, tag_start_pos, tag_end_pos)
 
         if tag_nodes.present?
@@ -101,7 +115,7 @@ module Submissions
       field_type = 'verification' if field_type == 'kba'
 
       # Calculate bounding box from tag nodes
-      area = calculate_bounding_box(tag_nodes, page_index, attachment_uuid)
+      area = calculate_bounding_box(tag_nodes, page_index, attachment_uuid, field_type)
       return nil unless area
 
       # Build field structure
@@ -118,7 +132,10 @@ module Submissions
       }
 
       # Handle datenow type
-      field['readonly'] = true if attrs['type'] == 'datenow'
+      if attrs['type'] == 'datenow'
+        field['readonly'] = true
+        field['default_value'] = '{{date}}'
+      end
 
       # Handle options for select/radio/multiple
       if %w[select radio multiple].include?(field_type) && attrs['options'].present?
@@ -168,7 +185,7 @@ module Submissions
       field
     end
 
-    def calculate_bounding_box(tag_nodes, page_index, attachment_uuid)
+    def calculate_bounding_box(tag_nodes, page_index, attachment_uuid, field_type = nil)
       return nil if tag_nodes.blank?
 
       # Get page dimensions from first node (assuming all nodes are on same page)
@@ -181,11 +198,25 @@ module Submissions
       min_y = tag_nodes.map(&:y).min
       max_y = tag_nodes.map { |n| n.y + n.h }.max
 
+      width = max_x - min_x
+      height = max_y - min_y
+
+      # For signature fields, ensure minimum height of 3 lines
+      # Calculate average text node height to determine line height
+      # Then ensure signature is at least 3 lines tall
+      if field_type == 'signature'
+        avg_node_height = tag_nodes.map(&:h).sum / tag_nodes.size.to_f
+        min_height = avg_node_height * 3.0
+        # Also ensure absolute minimum of approximately 3/35 of page height (typical line height)
+        min_height = [min_height, 3.0 / 35.0].max
+        height = [height, min_height].max
+      end
+
       {
         'x' => min_x,
         'y' => min_y,
-        'w' => max_x - min_x,
-        'h' => max_y - min_y,
+        'w' => width,
+        'h' => height,
         'page' => page_index,
         'attachment_uuid' => attachment_uuid
       }
