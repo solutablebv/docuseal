@@ -5,7 +5,7 @@ meta {
 }
 
 post {
-  url: http://localhost:3000/submissions/pdf
+  url: http://localhost:3000/api/submissions/pdf
   body: json
   auth: inherit
 }
@@ -17,7 +17,7 @@ headers {
 
 body:json {
   {
-    "name": "Test Submission Document",
+    "name": "Test Submission Document v4",
     "documents": [
       {
         "name": "Test Document",
@@ -42,6 +42,10 @@ body:json {
       {
         "role": "First Party",
         "email": "gydo.broos@solutable.nl"
+      },
+      {
+        "role": "Signer2",
+        "email": "gydo.broos+test@solutable.nl"
       }
     ]
   }
@@ -49,4 +53,5 @@ body:json {
 
 settings {
   encodeUrl: false
+  timeout: 0
 }
