@@ -126,7 +126,13 @@ module Api
            Submissions::ValidateTextTagFields::InvalidFieldError,
            StandardError => e
       Rollbar.error(e) if defined?(Rollbar)
-      render json: { error: "PDF submission error: #{e.message}" }, status: :unprocessable_content
+      
+      # Check if it's a folder not found error (should return 400)
+      if e.message&.include?('Folder with id') && e.message&.include?('not found and no folder_name provided')
+        render json: { error: e.message }, status: :bad_request
+      else
+        render json: { error: "PDF submission error: #{e.message}" }, status: :unprocessable_content
+      end
     end
 
     def destroy
@@ -225,7 +231,7 @@ module Api
       template = Template.new(
         account: current_account,
         author: current_user,
-        folder: current_account.default_template_folder,
+        folder: find_template_folder,
         name: params[:name] || params['name'] || 'PDF Submission',
         source: :api
       )
@@ -362,6 +368,61 @@ module Api
           'role' => role
         }
       end
+    end
+
+    def find_template_folder
+      folder_id = params[:folder_id] || params['folder_id']
+      folder_name = params[:folder_name] || params['folder_name']
+
+      # If folder_id is provided, use it (ignore folder_name)
+      if folder_id.present?
+        folder = current_account.template_folders.find_by(id: folder_id)
+
+        if folder.nil?
+          # Folder not found by ID
+          if folder_name.present?
+            # Create folder using provided name
+            folder = TemplateFolders.find_or_create_by_name(current_user, folder_name)
+          else
+            # No folder_name provided, return 400 error
+            raise StandardError, "Folder with id #{folder_id} not found and no folder_name provided"
+          end
+        end
+
+        return folder
+      end
+
+      # If only folder_name is provided
+      if folder_name.present?
+        # Find folder by name (supports nested folders like "Parent / Child")
+        # Use the same logic as TemplateFolders.find_or_create_by_name for finding
+        parent_name, name = folder_name.to_s.split(' / ', 2).map(&:squish)
+
+        if name.present?
+          # Nested folder: find parent first, then child
+          parent_folder = current_account.template_folders.where(parent_folder_id: nil).find_by(name: parent_name)
+          folders = if parent_folder
+                      current_account.template_folders.where(name:, parent_folder:).order(id: :asc)
+                    else
+                      current_account.template_folders.none
+                    end
+        else
+          # Top-level folder
+          name = parent_name
+          folders = current_account.template_folders.where(name:, parent_folder_id: nil).order(id: :asc)
+        end
+
+        if folders.any?
+          # Pick oldest/first if multiple results found
+          return folders.first
+        else
+          # Folder doesn't exist, create it
+          return TemplateFolders.find_or_create_by_name(current_user, folder_name)
+        end
+      end
+
+      # Default: use default folder
+      current_account.default_template_folder
     end
 
     def submissions_params

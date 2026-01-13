@@ -97,6 +97,8 @@ module Params
       type(params, :order, String)
       type(params, :variables, Hash)
       type(params, :message, Hash)
+      type(params, :folder_id, Integer)
+      type(params, :folder_name, String)
 
       boolean(params, :send_email)
       boolean(params, :send_sms)
