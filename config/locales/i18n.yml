@@ -6445,6 +6445,42 @@ nl: &nl
 
     Bedankt,
     {account.name}
+  submitter_reminder_first_email_subject: Een document wacht op uw handtekening
+  submitter_reminder_first_email_body: |
+    Hallo,
+
+    Een document "{template.name}" wacht op uw handtekening.
+
+    [Bekijken en ondertekenen]({submitter.link})
+
+    Neem contact met ons op door op deze e-mail te antwoorden als u vragen heeft.
+
+    Bedankt,
+    {account.name}
+  submitter_reminder_second_email_subject: 'Herinnering: Een document wacht op uw handtekening'
+  submitter_reminder_second_email_body: |
+    Hallo,
+
+    Dit is een herinnering dat het document "{template.name}" nog steeds op uw handtekening wacht.
+
+    [Bekijken en ondertekenen]({submitter.link})
+
+    Neem contact met ons op door op deze e-mail te antwoorden als u vragen heeft.
+
+    Bedankt,
+    {account.name}
+  submitter_reminder_third_email_subject: 'Laatste herinnering: Een document wacht op uw handtekening'
+  submitter_reminder_third_email_body: |
+    Hallo,
+
+    Dit is de laatste herinnering dat het document "{template.name}" op uw handtekening wacht.
+
+    [Bekijken en ondertekenen]({submitter.link})
+
+    Neem contact met ons op door op deze e-mail te antwoorden als u vragen heeft.
+
+    Bedankt,
+    {account.name}
   submitter_completed_email_body: |
     Hallo,
 
