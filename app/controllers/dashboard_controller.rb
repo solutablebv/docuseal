@@ -1,10 +1,7 @@
 # frozen_string_literal: true
 
 class DashboardController < ApplicationController
-  skip_before_action :authenticate_user!, only: %i[index]
-
   before_action :maybe_redirect_product_url
-  before_action :maybe_render_landing
   before_action :maybe_redirect_mfa_setup
 
   skip_authorization_check
@@ -34,11 +31,5 @@ class DashboardController < ApplicationController
                                                                              key: AccountConfig::FORCE_MFA)
 
     redirect_to mfa_setup_path, notice: I18n.t('setup_2fa_to_continue')
-  end
-
-  def maybe_render_landing
-    return if signed_in?
-
-    render 'pages/landing'
   end
 end

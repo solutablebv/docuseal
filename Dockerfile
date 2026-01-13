@@ -81,6 +81,7 @@ COPY ./public ./public
 COPY ./tmp ./tmp
 COPY LICENSE README.md Rakefile config.ru .version ./
 COPY .version ./public/version
+COPY qa.sh ./qa.sh
 
 COPY --from=download /fonts/GoNotoKurrent-Regular.ttf /fonts/GoNotoKurrent-Bold.ttf /fonts/DancingScript-Regular.otf /fonts/OFL.txt /fonts
 COPY --from=download /fonts/FreeSans.ttf /usr/share/fonts/freefont

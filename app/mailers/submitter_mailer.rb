@@ -155,6 +155,41 @@ class SubmitterMailer < ApplicationMailer
     end
   end
 
+  def reminder_email(submitter, reminder_number:)
+    @current_account = submitter.submission.account
+    @submitter = submitter
+
+    template_key = case reminder_number
+                   when 1
+                     AccountConfig::SUBMITTER_REMINDER_FIRST_EMAIL_KEY
+                   when 2
+                     AccountConfig::SUBMITTER_REMINDER_SECOND_EMAIL_KEY
+                   when 3
+                     AccountConfig::SUBMITTER_REMINDER_THIRD_EMAIL_KEY
+                   else
+                     raise ArgumentError, "Invalid reminder_number: #{reminder_number}. Must be 1, 2, or 3."
+                   end
+
+    @email_config = AccountConfigs.find_for_account(@current_account, template_key)
+    @body = fetch_config_email_body(@email_config, @submitter)
+    @subject = @email_config&.value&.dig('subject')
+
+    assign_message_metadata('submitter_reminder', @submitter)
+
+    reply_to = build_submitter_reply_to(@submitter)
+
+    I18n.with_locale(@current_account.locale) do
+      subject = build_invite_subject(@subject, @email_config, submitter)
+
+      mail(
+        to: @submitter.friendly_name,
+        from: from_address_for_submitter(submitter),
+        subject:,
+        reply_to:
+      )
+    end
+  end
+
   private
 
   def build_submitter_reply_to(submitter, email_config: nil, documents_copy_email: nil)

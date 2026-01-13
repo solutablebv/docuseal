@@ -828,7 +828,7 @@ export default {
     attribution: {
       type: Boolean,
       required: false,
-      default: true
+      default: false
     },
     language: {
       type: String,

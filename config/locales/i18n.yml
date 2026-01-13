@@ -108,6 +108,42 @@ en: &en
 
     Thanks,
     {account.name}
+  submitter_reminder_first_email_subject: A document is waiting for your signature
+  submitter_reminder_first_email_body: |
+    Hi there,
+
+    A document "{template.name}" is waiting for your signature.
+
+    [Review and Sign]({submitter.link})
+
+    Please contact us by replying to this email if you have any questions.
+
+    Thanks,
+    {account.name}
+  submitter_reminder_second_email_subject: 'Reminder: A document is waiting for your signature'
+  submitter_reminder_second_email_body: |
+    Hi there,
+
+    This is a reminder that the document "{template.name}" is still waiting for your signature.
+
+    [Review and Sign]({submitter.link})
+
+    Please contact us by replying to this email if you have any questions.
+
+    Thanks,
+    {account.name}
+  submitter_reminder_third_email_subject: 'Final reminder: A document is waiting for your signature'
+  submitter_reminder_third_email_body: |
+    Hi there,
+
+    This is your final reminder that the document "{template.name}" is waiting for your signature.
+
+    [Review and Sign]({submitter.link})
+
+    Please contact us by replying to this email if you have any questions.
+
+    Thanks,
+    {account.name}
   submitter_completed_email_body: |
     Hi,
 
@@ -295,6 +331,9 @@ en: &en
   email_templates: Email Templates
   signature_request_email: Signature request email
   signature_request_reminder_email: Signature request reminder email
+  first_reminder_email: First Reminder Email
+  second_reminder_email: Second Reminder Email
+  third_reminder_email: Third Reminder Email
   signature_request_sms: Signature Request SMS
   verification_code_sms: Verification Code SMS
   completed_notification_email: Completed notification email
@@ -1091,6 +1130,42 @@ es: &es
 
     Gracias,
     {account.name}
+  submitter_reminder_first_email_subject: Un documento está esperando tu firma
+  submitter_reminder_first_email_body: |
+    Hola,
+
+    Un documento "{template.name}" está esperando tu firma.
+
+    [Revisar y Firmar]({submitter.link})
+
+    Por favor, contáctanos respondiendo a este correo si tienes alguna pregunta.
+
+    Gracias,
+    {account.name}
+  submitter_reminder_second_email_subject: 'Recordatorio: Un documento está esperando tu firma'
+  submitter_reminder_second_email_body: |
+    Hola,
+
+    Este es un recordatorio de que el documento "{template.name}" todavía está esperando tu firma.
+
+    [Revisar y Firmar]({submitter.link})
+
+    Por favor, contáctanos respondiendo a este correo si tienes alguna pregunta.
+
+    Gracias,
+    {account.name}
+  submitter_reminder_third_email_subject: 'Recordatorio final: Un documento está esperando tu firma'
+  submitter_reminder_third_email_body: |
+    Hola,
+
+    Este es tu recordatorio final de que el documento "{template.name}" está esperando tu firma.
+
+    [Revisar y Firmar]({submitter.link})
+
+    Por favor, contáctanos respondiendo a este correo si tienes alguna pregunta.
+
+    Gracias,
+    {account.name}
   submitter_completed_email_body: |
     Hola,
 
@@ -1276,6 +1351,9 @@ es: &es
   email_templates: Plantillas de correo electrónico
   signature_request_email: Correo de solicitud de firma
   signature_request_reminder_email: Correo de recordatorio de solicitud de firma
+  first_reminder_email: Primer correo de recordatorio
+  second_reminder_email: Segundo correo de recordatorio
+  third_reminder_email: Tercer correo de recordatorio
   signature_request_sms: SMS de solicitud de firma
   verification_code_sms: SMS de código de verificación
   completed_notification_email: Correo de notificación de formulario completado

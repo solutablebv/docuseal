@@ -27,5 +27,33 @@ class SendSubmitterInvitationEmailJob
 
     submitter.sent_at ||= Time.current
     submitter.save!
+
+    schedule_reminders(submitter)
+  end
+
+  private
+
+  def schedule_reminders(submitter)
+    reminder_config = AccountConfig.find_by(account: submitter.account, key: AccountConfig::SUBMITTER_REMINDERS)
+
+    return unless reminder_config&.value.present?
+
+    durations = reminder_config.value
+
+    [:first_duration, :second_duration, :third_duration].each_with_index do |duration_key, index|
+      duration_str = durations[duration_key.to_s]
+      next if duration_str.blank? || duration_str.to_s.downcase == 'none'
+
+      parsed_duration = AccountConfigs.parse_reminder_duration(duration_str)
+      next unless parsed_duration
+
+      reminder_number = index + 1
+
+      SendSubmitterReminderEmailJob.perform_at(
+        submitter.sent_at + parsed_duration,
+        'submitter_id' => submitter.id,
+        'reminder_number' => reminder_number
+      )
+    end
   end
 end

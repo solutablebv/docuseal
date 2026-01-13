@@ -34,4 +34,45 @@ module AccountConfigs
 
     configs
   end
+
+  def parse_reminder_duration(duration_str)
+    return nil if duration_str.blank? || duration_str.to_s.downcase == 'none'
+
+    case duration_str.to_s
+    when 'one_hour'
+      1.hour
+    when 'two_hours'
+      2.hours
+    when 'four_hours'
+      4.hours
+    when 'eight_hours'
+      8.hours
+    when 'twelve_hours'
+      12.hours
+    when 'twenty_four_hours'
+      24.hours
+    when 'two_days'
+      2.days
+    when 'three_days'
+      3.days
+    when 'four_days'
+      4.days
+    when 'five_days'
+      5.days
+    when 'six_days'
+      6.days
+    when 'seven_days'
+      7.days
+    when 'eight_days'
+      8.days
+    when 'fifteen_days'
+      15.days
+    when 'twenty_one_days'
+      21.days
+    when 'thirty_days'
+      30.days
+    else
+      nil
+    end
+  end
 end
